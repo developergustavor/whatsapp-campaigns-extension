@@ -1,0 +1,13 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import crypto from 'node:crypto';
+const root=path.resolve(import.meta.dirname,'..');
+const source=path.join(root,'src'),dist=path.join(root,'dist');
+const js=await fs.readFile(path.join(root,'vendor/wppconnect-wa.js'));
+if(js.length<10000 || !js.toString().includes('WPP'))throw Error('WA-JS ausente ou inválido. Execute node scripts/update-wa.mjs.');
+await fs.rm(dist,{recursive:true,force:true});
+await fs.cp(source,dist,{recursive:true});
+await fs.cp(path.join(root,'vendor'),path.join(dist,'vendor'),{recursive:true});
+const manifest=JSON.parse(await fs.readFile(path.join(dist,'manifest.json'),'utf8'));
+console.log(`Build ${manifest.version} criado em ${dist}`);
+console.log('WA-JS SHA256:',crypto.createHash('sha256').update(js).digest('hex'));

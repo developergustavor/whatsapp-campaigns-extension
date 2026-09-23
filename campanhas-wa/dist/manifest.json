@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Campanhas WA • Local",
+  "version": "1.0.0",
+  "description": "Campanhas autorizadas no WhatsApp Web, com CSV e histórico local.",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage", "unlimitedStorage", "scripting", "alarms", "sidePanel"],
+  "host_permissions": ["https://web.whatsapp.com/*"],
+  "background": {"service_worker": "background.js", "type": "module"},
+  "action": {"default_title": "Abrir campanhas"},
+  "side_panel": {"default_path": "index.html"},
+  "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'self'"}
+}
