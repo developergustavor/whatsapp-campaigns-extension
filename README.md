@@ -1,4 +1,4 @@
-# Campanhas WA • Local — v1.1.0
+# Campanhas WA • Local — v1.2.0
 
 [English](#english) · [Português](#portugues)
 
@@ -11,6 +11,17 @@
 <a id="english"></a>
 
 ## English
+
+### New in 1.2 — editor and CSV preview
+
+Choose **Botão CTA**, **Quick reply** or **Lista** in the visible format buttons in **Nova campanha** (or Edit). CTA provides button text and URL/call action; quick replies provide button text and reply ID; lists provide opening-button text, sections, option IDs, titles and descriptions. Add/remove items, set title/footer and review the illustrative preview. Switching formats preserves drafts while the editor stays open.
+
+Fill **Contato para teste** with an authorized phone including country code, then click **Criar teste de 1 contato**. This saves a separate stopped campaign; open it and click Start to send.
+
+Importing a CSV shows a table with source record, name/ID, normalized destination, original value when changed and validation details. Search and filter valid, invalid or duplicate rows; choose 25/50/100 records per page. Filters only change the preview. Duplicate valid destinations are omitted from the queue; invalid entries remain recorded without sending. The version is visible in the top bar.
+
+DOM tests cover the interactive fields, draft restoration, import filters, pagination and escaping. They do not replace a real WhatsApp delivery test.
+
 
 A local Chrome Manifest V3 extension for campaigns with authorized contacts and groups. It includes source code, tests, a bundled WA-JS build, and an installable `dist` directory. No backend, remote runtime dependencies, or build dependencies are required. Campaigns are stored in `chrome.storage.local`, with access restricted to trusted extension contexts.
 
@@ -57,10 +68,11 @@ Version 1.1 keeps the existing storage key and campaign format. New interactive 
 
 ### Build and test
 
-Requirements: Node.js 20+ and npm. No `npm install` is necessary.
+Requirements: Node.js 20+ and npm. Run `npm ci` to install the DOM testing dependency; building alone needs no dependencies.
 
 ```bash
 cd ~/Documents/campanhas-wa
+npm ci
 npm test
 npm run build
 ```
@@ -83,7 +95,7 @@ The build copies `src` and `vendor` into `dist` and prints the bundled WA-JS SHA
 7. Click **Salvar campanha**. Saving never starts a campaign.
 8. Review and click **Iniciar / retomar**. The first recipient also waits for a randomly selected interval.
 
-**Criar teste de 1 contato** asks for an authorized test phone and creates a separate, stopped one-recipient campaign using the current message configuration. Click Start on that campaign to actually send it. Verify the visual result on the receiving device.
+**Criar teste de 1 contato** uses the authorized phone filled in **Contato para teste** and creates a separate, stopped one-recipient campaign using the current message configuration. Click Start on that campaign to actually send it. Verify the visual result on the receiving device.
 
 Editing preserves destinations and history. It changes only the configuration for future sends. Create a new campaign to replace the recipient list or change its type.
 
@@ -155,6 +167,7 @@ npm run build
 
 # Or try the development nightly
 node scripts/update-wa.mjs nightly
+npm ci
 npm test
 npm run build
 ```
@@ -163,7 +176,7 @@ The updater needs GitHub access and may use unpkg for license files. If the corr
 
 ### Validation and initial test
 
-**28 automated tests pass**, covering CSV parsing/deduplication, validation, lifecycle recovery, intervals, limits, exclusions, pause during send, uncertainty, group approval/restrictions, native invitations, interactive dispatch, LID handling, account changes, export structure and dashboard escaping.
+**31 automated tests pass**, covering CSV parsing/deduplication, validation, lifecycle recovery, intervals, limits, exclusions, pause during send, uncertainty, group approval/restrictions, native invitations, interactive dispatch, LID handling, account changes, export structure and dashboard escaping.
 
 The original sample CSVs parsed as 988 contacts and two lists of 40 group links, with no internal duplicates. This validates formatting, not current phone/group availability. Those personal CSVs are not distributed in this package.
 
@@ -201,6 +214,17 @@ References: https://wppconnect.io/wa-js/ ; https://github.com/wppconnect-team/wa
 
 ## Português
 
+### Novidades da 1.2 — formulário e prévia do CSV
+
+Em **Nova campanha** ou **Editar**, escolha os botões visíveis **Botão CTA**, **Quick reply** ou **Lista**. CTA tem texto do botão e ação de URL/ligação; quick reply tem texto e ID da resposta; lista tem texto de abertura, seções, IDs, títulos e descrições das opções. Adicione/remova itens, preencha título/rodapé e confira a prévia ilustrativa. Alternar formatos preserva os rascunhos enquanto o editor estiver aberto.
+
+Preencha **Contato para teste** com DDI e número autorizado e clique em **Criar teste de 1 contato**. A campanha de teste é salva parada; clique em Iniciar nela para enviar.
+
+O CSV importado aparece em uma tabela com registro de origem, nome/ID, destino tratado, valor original quando alterado e detalhes da validação. Busque e filtre válidos, inválidos ou duplicados, com 25/50/100 registros por página. Filtros afetam somente a prévia. Duplicados válidos são retirados da fila; inválidos ficam registrados sem envio. A versão aparece na topbar.
+
+Testes de DOM cobrem os campos interativos, restauração de rascunhos, filtros, paginação e escape de conteúdo. Não substituem um teste real de entrega no WhatsApp.
+
+
 Extensão Chrome Manifest V3 para campanhas com contatos e grupos autorizados. Código JavaScript sem framework, sem backend e sem dependências de build. Banco local persistente em `chrome.storage.local`, restrito aos contextos da extensão. O pacote contém fonte, testes, WA-JS e a pasta `dist` pronta para carregar.
 
 
@@ -237,10 +261,11 @@ Não apague nem mova a pasta instalada. Para atualizar, mantenha a mesma pasta, 
 
 ### 2. Build a partir do código
 
-Requisitos: Node.js 20+ e npm. Não precisa executar `npm install`.
+Requisitos: Node.js 20+ e npm. Execute `npm ci` para instalar a dependência dos testes de DOM; o build isolado não precisa de dependências.
 
 ```bash
 cd ~/Documents/campanhas-wa
+npm ci
 npm test
 npm run build
 ```
@@ -325,6 +350,7 @@ Para experimentar a nightly:
 
 ```bash
 node scripts/update-wa.mjs nightly
+npm ci
 npm test
 npm run build
 ```
@@ -345,7 +371,7 @@ WA-JS depende das funções internas do WhatsApp Web. Compatibilidade com sua se
 
 ### 8. Validação realizada
 
-- 28 testes automatizados passam: parsing, BOM, multiline, deduplicação, LID, validação, exportação, recuperação, agendamento, limite diário, exclusões, pausa durante envio, resultado incerto, aprovação pendente, grupo restrito, convite nativo e troca de conta.
+- 31 testes automatizados passam: parsing, BOM, multiline, deduplicação, LID, validação, exportação, recuperação, agendamento, limite diário, exclusões, pausa durante envio, resultado incerto, aprovação pendente, grupo restrito, convite nativo e troca de conta.
 - Os três CSVs anexados foram lidos pelo importador: **988 contatos válidos**, **40 links válidos** e **40 links válidos**, sem duplicados internos. Isso valida formato, não a existência atual dos números/grupos.
 - O XLSX foi validado independentemente: estrutura ZIP/XML, abertura pelo openpyxl, preservação de telefones como texto, Unicode, filtro e cabeçalho congelado.
 - A integração foi testada com simulações de Chrome/WA-JS. **Não foram executados envios reais, entrada em grupos nem login na sua conta.**

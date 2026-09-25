@@ -28,7 +28,7 @@ export function importCSV(text, type) {
   const linkIndex=h.findIndex(v=>['link','url','convite','grupo','link do grupo'].includes(v));
   if(type==='contacts' && numberIndex<0) throw Error('CSV de contatos precisa da coluna Numero ou Telefone.');
   const header=type==='contacts'||linkIndex>=0;
-  const seen=new Set();let duplicates=0;
+  const seen=new Map();const preview=[];let duplicates=0;
   const items=rows.slice(header?1:0).map((r,i)=>{
     let target='',name='',error='',key='';
     if(type==='groups') {
@@ -41,18 +41,40 @@ export function importCSV(text, type) {
       if(!/^\d{8,15}$/.test(target)) error='Telefone inválido ou indisponível. Inclua DDI; LID não é telefone.';
       key=target;
     }
-    if(!error && seen.has(key)){duplicates++;return null;} if(!error)seen.add(key);
+    const line=i+(header?2:1),duplicate=!error&&seen.has(key);
+    preview.push({line,name:name||'',target,rawTarget:r[type==='groups'?(linkIndex>=0?linkIndex:0):numberIndex]||'',sourceId:idIndex>=0?r[idIndex]:'',importStatus:error?'invalid':duplicate?'duplicate':'valid',detail:error||(duplicate?`Repetido do registro ${seen.get(key)}; não será enviado.`:'Pronto para importar.')});
+    if(duplicate){duplicates++;return null;} if(!error)seen.set(key,line);
     return {id:crypto.randomUUID(),line:i+(header?2:1),name:name||'',target,sourceId:idIndex>=0?r[idIndex]:'',status:error?'invalid':'pending',detail:error,attempts:0,history:[]};
   }).filter(Boolean);
-  return {items,duplicates,valid:items.filter(x=>x.status==='pending').length,invalid:items.filter(x=>x.status==='invalid').length};
+  return {items,preview,duplicates,valid:items.filter(x=>x.status==='pending').length,invalid:items.filter(x=>x.status==='invalid').length};
 }
 export function validateConfig(c) {
   if(!String(c.name||'').trim()) throw Error('Informe o nome da campanha.');
-  if(!['contacts','groups'].includes(c.type)||!['text','invite'].includes(c.mode))throw Error('Tipo inválido.');
-  if(c.mode==='text'&&!String(c.text||'').trim())throw Error('Escreva a mensagem.');
+  if(!['contacts','groups'].includes(c.type)||!['text','invite','cta','quick_reply','list'].includes(c.mode))throw Error('Tipo inválido.');
+  if(c.mode!=='invite'&&!String(c.text||'').trim())throw Error('Escreva a mensagem.');
   if(c.mode==='invite'&&!inviteCode(c.invite))throw Error('Informe um link de convite válido.');
   if(!Number.isFinite(c.min)||!Number.isFinite(c.max)||c.min<30||c.max<c.min||c.max>86400)throw Error('Intervalos: mínimo de 30s, máximo >= mínimo e até 86400s.');
   for(const k of ['daily','batch']) if(!Number.isInteger(c[k])||c[k]<1)throw Error('Limites precisam ser inteiros positivos.');
+  validateInteractive(c);
+}
+export const modeLabels={text:'Texto',invite:'Convite nativo',cta:'CTA',quick_reply:'Quick reply',list:'Lista'};
+export function validateInteractive(c){
+ const x=c.interactive||{};
+ if(['cta','quick_reply'].includes(c.mode)){
+  if(!Array.isArray(x.buttons)||x.buttons.length<1||x.buttons.length>3)throw Error('Adicione de 1 a 3 botões.');
+  const ids=new Set();
+  for(const b of x.buttons){
+   if(!b.text?.trim()||b.text.length>20)throw Error('Cada botão precisa de um texto de até 20 caracteres.');
+   if(c.mode==='quick_reply'){if(!b.id?.trim()||ids.has(b.id))throw Error('IDs dos botões devem ser preenchidos e únicos.');ids.add(b.id);}
+   else if(b.url){try{const u=new URL(b.url);if(!['http:','https:'].includes(u.protocol))throw Error();}catch{throw Error('URL do CTA inválida.');}}
+   else if(!/^\+?\d{8,15}$/.test(b.phoneNumber||''))throw Error('CTA de ligação precisa de telefone com DDI.');
+  }
+ }
+ if(c.mode==='list'){
+  if(!x.buttonText?.trim()||x.buttonText.length>20)throw Error('Texto de abertura da lista: 1 a 20 caracteres.');
+  const rows=x.sections?.flatMap(s=>s.rows||[]);if(!rows?.length||rows.length>10)throw Error('A lista precisa de 1 a 10 opções.');
+  const ids=new Set();for(const r of rows){if(!r.rowId?.trim()||ids.has(r.rowId)||!r.title?.trim())throw Error('Opções da lista precisam de título e ID único.');ids.add(r.rowId);}
+ }
 }
 export function delayMs(min,max,random=Math.random) {return Math.round((min+random()*(max-min))*1000);}
 export function stats(items) {const s={total:items.length};for(const x of items)s[x.status]=(s[x.status]||0)+1;return s;}

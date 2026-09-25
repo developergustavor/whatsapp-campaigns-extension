@@ -1,5 +1,6 @@
 import {validateConfig,delayMs,inviteCode,recover} from './core.js';
 import {pageOperation} from './adapter.js';
+import {extractPage} from './extractor.js';
 const KEY='campaignsDB';
 let chain=Promise.resolve(),working=false;
 const read=async()=> (await chrome.storage.local.get(KEY))[KEY]||{schema:1,campaigns:[],blocked:[]};
@@ -77,7 +78,7 @@ async function tick(id){
     if(!proceed){await page(tabId,'stop',{id});return;}
     phase='send';
     const text=c.text.replace(/\{\{nome\}\}/g,item.name||prepared.groupName||'').replace(/\{\{numero\}\}/g,c.type==='contacts'?item.target:'');
-    const result=await timeout(page(tabId,'send',{id,token,account:c.account,...prepared,text}),60000);
+    const result=await timeout(page(tabId,'send',{id,token,account:c.account,...prepared,text,mode:c.mode,interactive:c.interactive}),60000);
     if(!(result?.ack>=1))throw Error('WhatsApp não confirmou ACK de envio.');
     await finish(id,itemId,{status:'sent',detail:'Envio confirmado pelo WhatsApp (ACK ≥ 1; não significa leitura).',messageId:result.id,ack:result.ack});
   }catch(error){
@@ -111,6 +112,13 @@ async function handle(m){
   await boot;
   if(m.action==='state')return read();
   if(m.action==='connect')return connect();
+  if(m.action==='extract'){
+    if(!['groups','groupLink','participants','contacts','resolve'].includes(m.kind))throw Error('Extração inválida.');
+    const tab=await chrome.tabs.get(m.tabId);
+    if(!tab.url?.startsWith('https://web.whatsapp.com/'))throw Error('Aba do WhatsApp indisponível.');
+    const r=await timeout(chrome.scripting.executeScript({target:{tabId:m.tabId},world:'MAIN',func:extractPage,args:[m.kind,m.options||{}]}),90000);
+    if(!r?.[0]||r[0].error)throw Error(r?.[0]?.error?.message||'Falha na extração.');return r[0].result;
+  }
   if(m.action==='detach')return chrome.windows.create({url:chrome.runtime.getURL('index.html'),type:'popup',width:1200,height:850});
   if(m.action==='tab')return chrome.tabs.create({url:chrome.runtime.getURL('index.html')});
   if(m.action==='save'){
@@ -120,9 +128,9 @@ async function handle(m){
       if(c&&(c.status==='running'||c.items.some(i=>['processing','sending'].includes(i.status))))throw Error('Pause e aguarde a operação atual para editar.');
       if(c&&['completed','cancelled'].includes(c.status))throw Error('Campanha encerrada. Crie uma nova campanha.');
       if(!c){if(!m.items?.some(i=>i.status==='pending'))throw Error('Importe pelo menos um destino válido.');c={id:crypto.randomUUID(),createdAt:Date.now(),status:'draft',items:m.items,sessionAttempts:0,nextAt:null};s.campaigns.unshift(c);}
-      const {name,type,mode,text,invite,min,max,daily,batch}=m.config;
+      const {name,type,mode,text,invite,min,max,daily,batch,interactive}=m.config;
       if(c.items.length&&c.type&&c.type!==type)throw Error('O tipo dos destinatários não pode ser alterado.');
-      Object.assign(c,{name:name.trim(),type,mode,text,invite,min,max,daily,batch,updatedAt:Date.now()});return c.id;
+      Object.assign(c,{name:name.trim(),type,mode,text,invite,min,max,daily,batch,interactive,updatedAt:Date.now()});return c.id;
     });
   }
   if(m.action==='start'){

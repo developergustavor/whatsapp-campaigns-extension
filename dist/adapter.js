@@ -44,9 +44,11 @@ export async function pageOperation(action, data={}) {
     try {
       if(!active())throw Error('Pausada antes do envio.');
       const opts={waitForAck:true,markIsRead:false,detectMentioned:false};
-      const result=data.invitation
-        ? await W.chat.sendGroupInviteMessage(data.target,{...opts,...data.invitation,caption:data.text||undefined})
-        : await W.chat.sendTextMessage(data.target,data.text,opts);
+      let result;
+      if(data.invitation)result=await W.chat.sendGroupInviteMessage(data.target,{...opts,...data.invitation,caption:data.text||undefined});
+      else if(data.mode==='list')result=await W.chat.sendListMessage(data.target,{...opts,...data.interactive,description:data.text});
+      else if(['cta','quick_reply'].includes(data.mode))result=await W.chat.sendTextMessage(data.target,data.text,{...opts,...data.interactive,useInteractiveMessage:true});
+      else result=await W.chat.sendTextMessage(data.target,data.text,opts);
       return {id:wid(result.id)||String(result.id||''),ack:result.ack};
     } finally {root.busy=false;}
   }
