@@ -51,7 +51,7 @@ export function importCSV(text, type) {
 export function validateConfig(c) {
   if(!String(c.name||'').trim()) throw Error('Informe o nome da campanha.');
   if(!['contacts','groups'].includes(c.type)||!['text','invite','cta','quick_reply','list'].includes(c.mode))throw Error('Tipo inválido.');
-  if(c.mode!=='invite'&&!String(c.text||'').trim())throw Error('Escreva a mensagem.');
+  if(!['invite','cta'].includes(c.mode)&&!String(c.text||'').trim())throw Error('Escreva a mensagem.');
   if(c.mode==='invite'&&!inviteCode(c.invite))throw Error('Informe um link de convite válido.');
   if(!Number.isFinite(c.min)||!Number.isFinite(c.max)||c.min<30||c.max<c.min||c.max>86400)throw Error('Intervalos: mínimo de 30s, máximo >= mínimo e até 86400s.');
   for(const k of ['daily','batch']) if(!Number.isInteger(c[k])||c[k]<1)throw Error('Limites precisam ser inteiros positivos.');
@@ -60,14 +60,15 @@ export function validateConfig(c) {
 export const modeLabels={text:'Texto',invite:'Convite nativo',cta:'CTA',quick_reply:'Quick reply',list:'Lista'};
 export function validateInteractive(c){
  const x=c.interactive||{};
+ if(c.mode==='cta'&&(!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(x.image||'')||x.image.length>4*1024*1024))throw Error('CTA precisa de uma foto JPEG de até 3 MB.');
  if(['cta','quick_reply'].includes(c.mode)){
   if(!Array.isArray(x.buttons)||x.buttons.length<1||x.buttons.length>3)throw Error('Adicione de 1 a 3 botões.');
   const ids=new Set();
   for(const b of x.buttons){
    if(!b.text?.trim()||b.text.length>20)throw Error('Cada botão precisa de um texto de até 20 caracteres.');
    if(c.mode==='quick_reply'){if(!b.id?.trim()||ids.has(b.id))throw Error('IDs dos botões devem ser preenchidos e únicos.');ids.add(b.id);}
-   else if(b.url){try{const u=new URL(b.url);if(!['http:','https:'].includes(u.protocol))throw Error();}catch{throw Error('URL do CTA inválida.');}}
-   else if(!/^\+?\d{8,15}$/.test(b.phoneNumber||''))throw Error('CTA de ligação precisa de telefone com DDI.');
+   // Invalid CTA URLs are discarded by the sender; never rewritten.
+
   }
  }
  if(c.mode==='list'){

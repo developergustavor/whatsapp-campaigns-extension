@@ -17,6 +17,7 @@ const boot=(async()=>{
 const getCampaign=(s,id)=>{const c=s.campaigns.find(c=>c.id===id);if(!c)throw Error('Campanha não encontrada.');return c;};
 async function schedule(c){if(c.status==='running'&&c.nextAt)await chrome.alarms.create('run:'+c.id,{when:Math.max(Date.now()+50,c.nextAt)});}
 async function page(tabId,action,data={}){
+  if(action==='send'&&data.mode==='cta')await chrome.scripting.executeScript({target:{tabId},world:'MAIN',files:['cta-photo.js']});
   const result=await chrome.scripting.executeScript({target:{tabId},world:'MAIN',func:pageOperation,args:[action,data]});
   if(!result?.[0] || result[0].error)throw Error(result?.[0]?.error?.message||'Sem resposta do WhatsApp.');
   return result[0].result;
@@ -80,7 +81,7 @@ async function tick(id){
     const text=c.text.replace(/\{\{nome\}\}/g,item.name||prepared.groupName||'').replace(/\{\{numero\}\}/g,c.type==='contacts'?item.target:'');
     const result=await timeout(page(tabId,'send',{id,token,account:c.account,...prepared,text,mode:c.mode,interactive:c.interactive}),60000);
     if(!(result?.ack>=1))throw Error('WhatsApp não confirmou ACK de envio.');
-    await finish(id,itemId,{status:'sent',detail:'Envio confirmado pelo WhatsApp (ACK ≥ 1; não significa leitura).',messageId:result.id,ack:result.ack});
+    await finish(id,itemId,{status:'sent',detail:result.detail||'Envio confirmado pelo WhatsApp (ACK ≥ 1; não significa leitura).',deliveryFormat:result.deliveryFormat,messageId:result.id,ack:result.ack});
   }catch(error){
     if(tabId)await page(tabId,'stop',{id}).catch(()=>{});
     if(itemId){

@@ -1,4 +1,4 @@
-# Campanhas WA • Local — v1.2.0
+# Campanhas WA • Local — v1.3.0
 
 [English](#english) · [Português](#portugues)
 
@@ -12,9 +12,22 @@
 
 ## English
 
+### Version 1.3 — photo + URL CTA (device validation pending)
+
+CTA now requires a JPEG upload (up to 3 MB), message text (empty becomes a space), optional footer and up to three HTTPS URL buttons. Only `cta_url` is supported; phone-call buttons are removed. Invalid URLs are discarded, valid URLs are sent unchanged. Existing CTA campaigns must be edited to add a photo before running. The title is deliberately empty in the protocol.
+
+Implementation: `sendFileMessage` uses WhatsApp's normal media preparation/upload. A hook on `createMsgProtobuf`, scoped to a generated message ID, uses its complete uploaded `imageMessage` to construct a top-level `interactiveMessage`, with no view-once envelope or `messageContextInfo`, and `nativeFlowMessage.messageVersion = 1`. A hook on `createFanoutMsgStanza` adds `<biz><interactive type="native_flow" v="1"><native_flow v="9" name="mixed"/></interactive></biz>` to that message only. No `bot` node is added. Source: `src/cta-photo.js`. These are internal APIs: presence and writable exports are checked at runtime; compatibility with the actual WhatsApp session remains unverified.
+
+Unavailable hooks, discarded buttons, an explicit 405 rejection or negative ACK trigger a normal JPEG with the valid links in the caption. The recipient history identifies this fallback. A timeout, an unrecognized pipeline or other ambiguous failure pauses for manual review; automatically resending could duplicate a delivered message. Offline sessions and failed media uploads cannot guarantee delivery. This is an explicit limitation relative to an unconditional fallback requirement.
+
+**36 automated tests pass; Android/iPhone/Web validation is NOT completed.** Tests simulate protocol and stanza creation, the legacy/named argument shapes, untouched normal photos, URL preservation, fallback, timeout behavior and pause. There are no device screenshots and no live sends performed here. User feedback for the prior version: list worked; quick reply worked on Web but not Android/iOS. Their dispatch code is unchanged.
+
+To validate: reload the extension AND WhatsApp Web, create a group campaign with one authorized test-group invite link, select CTA, upload a JPEG, fill text and HTTPS button, set run limit 1 and start. Check the received message and open the button on Android, iPhone and Web. Capture all three screens and confirm the campaign history says CTA, not fallback. If any client fails to render after an ACK, the extension cannot detect that from the server acknowledgment.
+
+
 ### New in 1.2 — editor and CSV preview
 
-Choose **Botão CTA**, **Quick reply** or **Lista** in the visible format buttons in **Nova campanha** (or Edit). CTA provides button text and URL/call action; quick replies provide button text and reply ID; lists provide opening-button text, sections, option IDs, titles and descriptions. Add/remove items, set title/footer and review the illustrative preview. Switching formats preserves drafts while the editor stays open.
+Choose **Botão CTA**, **Quick reply** or **Lista** in the visible format buttons in **Nova campanha** (or Edit). CTA provides a JPEG photo, button text and HTTPS URL; quick replies provide button text and reply ID; lists provide opening-button text, sections, option IDs, titles and descriptions. Add/remove items, set title/footer and review the illustrative preview. Switching formats preserves drafts while the editor stays open.
 
 Fill **Contato para teste** with an authorized phone including country code, then click **Criar teste de 1 contato**. This saves a separate stopped campaign; open it and click Start to send.
 
@@ -29,7 +42,7 @@ A local Chrome Manifest V3 extension for campaigns with authorized contacts and 
 
 - Import contact CSVs or group invite links, with validation and deduplication.
 - Text messages and native group invitation cards.
-- **Experimental CTA buttons:** 1–3 URL or phone-call buttons.
+- **Experimental CTA buttons:** photo + 1–3 HTTPS URL buttons.
 - **Experimental quick replies:** 1–3 reply buttons with unique IDs.
 - **Experimental lists:** up to 10 options grouped into sections.
 - Campaign creation, editing, start/resume, pause, cancellation with confirmation, and deletion with confirmation.
@@ -176,7 +189,7 @@ The updater needs GitHub access and may use unpkg for license files. If the corr
 
 ### Validation and initial test
 
-**31 automated tests pass**, covering CSV parsing/deduplication, validation, lifecycle recovery, intervals, limits, exclusions, pause during send, uncertainty, group approval/restrictions, native invitations, interactive dispatch, LID handling, account changes, export structure and dashboard escaping.
+**36 automated tests pass**, covering CSV parsing/deduplication, validation, lifecycle recovery, intervals, limits, exclusions, pause during send, uncertainty, group approval/restrictions, native invitations, interactive dispatch, LID handling, account changes, export structure and dashboard escaping.
 
 The original sample CSVs parsed as 988 contacts and two lists of 40 group links, with no internal duplicates. This validates formatting, not current phone/group availability. Those personal CSVs are not distributed in this package.
 
@@ -212,11 +225,25 @@ References: https://wppconnect.io/wa-js/ ; https://github.com/wppconnect-team/wa
 
 <a id="portugues"></a>
 
+### Versão 1.3 — foto + CTA de link (validação nos aparelhos pendente)
+
+O CTA exige upload de JPEG (até 3 MB), texto (vazio vira espaço), rodapé opcional e até três botões com URL HTTPS. Somente `cta_url`; removido o botão de ligação. URLs inválidas são descartadas e as válidas são enviadas sem alterações. Edite campanhas CTA antigas para adicionar a foto antes de iniciar. O título no protocolo fica vazio.
+
+Implementação: `sendFileMessage` utiliza o fluxo de mídia normal do WhatsApp. O hook de `createMsgProtobuf`, limitado ao ID gerado para o envio, aproveita o `imageMessage` completo após upload e monta `interactiveMessage` no topo, sem envelope view-once e sem `messageContextInfo`, com `nativeFlowMessage.messageVersion = 1`. O hook de `createFanoutMsgStanza` acrescenta `<biz><interactive type="native_flow" v="1"><native_flow v="9" name="mixed"/></interactive></biz>` apenas nessa mensagem. Nenhum nó `bot` é adicionado. Código em `src/cta-photo.js`. São APIs internas: disponibilidade e possibilidade de interceptação são verificadas em execução; falta confirmar compatibilidade na sessão real.
+
+Hooks indisponíveis, botões descartados, rejeição explícita 405 ou ACK negativo acionam foto comum com os links válidos na legenda. O histórico identifica o fallback. Timeout, pipeline desconhecido e outras falhas ambíguas pausam para revisão: reenviar automaticamente pode duplicar uma mensagem entregue. Sem conexão ou com falha de upload não há garantia de entrega. Essa é uma limitação explícita em relação ao pedido de fallback incondicional.
+
+**36 testes automatizados passaram; a validação Android/iPhone/Web NÃO foi concluída.** Os testes simulam protobuf, stanza, assinaturas antigas/novas, isolamento de fotos comuns, preservação de URLs, fallback, timeout e pausa. Não há prints dos aparelhos nem envios reais executados aqui. Relato do usuário sobre a versão anterior: lista funcionou; quick reply funcionou no Web, mas não no Android/iOS. O envio desses dois formatos permanece igual.
+
+Para validar: recarregue a extensão E o WhatsApp Web, crie uma campanha de grupos com apenas o link de um grupo de teste autorizado, selecione CTA, envie um JPEG, preencha texto e botão HTTPS, limite a execução a 1 e inicie. Confira a mensagem recebida e abra o botão no Android, iPhone e Web. Tire prints dos três e confirme no histórico que o formato foi CTA, não fallback. Se um cliente não renderizar após ACK, a extensão não consegue detectar isso pela confirmação do servidor.
+
+
+
 ## Português
 
 ### Novidades da 1.2 — formulário e prévia do CSV
 
-Em **Nova campanha** ou **Editar**, escolha os botões visíveis **Botão CTA**, **Quick reply** ou **Lista**. CTA tem texto do botão e ação de URL/ligação; quick reply tem texto e ID da resposta; lista tem texto de abertura, seções, IDs, títulos e descrições das opções. Adicione/remova itens, preencha título/rodapé e confira a prévia ilustrativa. Alternar formatos preserva os rascunhos enquanto o editor estiver aberto.
+Em **Nova campanha** ou **Editar**, escolha os botões visíveis **Botão CTA**, **Quick reply** ou **Lista**. CTA tem foto JPEG, texto do botão e URL HTTPS; quick reply tem texto e ID da resposta; lista tem texto de abertura, seções, IDs, títulos e descrições das opções. Adicione/remova itens, preencha título/rodapé e confira a prévia ilustrativa. Alternar formatos preserva os rascunhos enquanto o editor estiver aberto.
 
 Preencha **Contato para teste** com DDI e número autorizado e clique em **Criar teste de 1 contato**. A campanha de teste é salva parada; clique em Iniciar nela para enviar.
 
@@ -371,7 +398,7 @@ WA-JS depende das funções internas do WhatsApp Web. Compatibilidade com sua se
 
 ### 8. Validação realizada
 
-- 31 testes automatizados passam: parsing, BOM, multiline, deduplicação, LID, validação, exportação, recuperação, agendamento, limite diário, exclusões, pausa durante envio, resultado incerto, aprovação pendente, grupo restrito, convite nativo e troca de conta.
+- 36 testes automatizados passam: parsing, BOM, multiline, deduplicação, LID, validação, exportação, recuperação, agendamento, limite diário, exclusões, pausa durante envio, resultado incerto, aprovação pendente, grupo restrito, convite nativo e troca de conta.
 - Os três CSVs anexados foram lidos pelo importador: **988 contatos válidos**, **40 links válidos** e **40 links válidos**, sem duplicados internos. Isso valida formato, não a existência atual dos números/grupos.
 - O XLSX foi validado independentemente: estrutura ZIP/XML, abertura pelo openpyxl, preservação de telefones como texto, Unicode, filtro e cabeçalho congelado.
 - A integração foi testada com simulações de Chrome/WA-JS. **Não foram executados envios reais, entrada em grupos nem login na sua conta.**

@@ -11,13 +11,12 @@ function setup(){
  const field=(name,value)=>{const el=document.querySelector(`[data-field="${name}"]`);if(el.localName==='select'){for(const o of el.options)o.selected=o.value===value;}else el.value=value;el.dispatchEvent(new Event('input',{bubbles:true}));};
  resetInteractive();return {document,Event,field};
 }
-test('formulário configura CTA URL e ligação, quick reply, lista e preserva rascunhos',()=>{
+test('formulário configura CTA URL, quick reply, lista e preserva rascunhos',()=>{
  const {document,field}=setup();initInteractive('cta');
  assert.equal(document.querySelector('#interactiveFields').hidden,false);
  field('text','Visitar');field('value','https://example.com');
  assert.deepEqual(interactiveValue('cta').buttons,[{text:'Visitar',url:'https://example.com'}]);
- field('kind','phone');field('value','5511999999999');
- assert.equal(interactiveValue('cta').buttons[0].phoneNumber,'5511999999999');
+
  switchInteractive('quick_reply');field('text','Sim');field('id','aceito');
  assert.deepEqual(interactiveValue('quick_reply').buttons,[{text:'Sim',id:'aceito'}]);
  switchInteractive('list');field('section','Produtos');field('title','Item A');field('rowId','a');field('description','Descrição');

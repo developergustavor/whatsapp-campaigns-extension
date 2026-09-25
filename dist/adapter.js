@@ -47,9 +47,10 @@ export async function pageOperation(action, data={}) {
       let result;
       if(data.invitation)result=await W.chat.sendGroupInviteMessage(data.target,{...opts,...data.invitation,caption:data.text||undefined});
       else if(data.mode==='list')result=await W.chat.sendListMessage(data.target,{...opts,...data.interactive,description:data.text});
-      else if(['cta','quick_reply'].includes(data.mode))result=await W.chat.sendTextMessage(data.target,data.text,{...opts,...data.interactive,useInteractiveMessage:true});
+      else if(data.mode==='cta'){if(!root.sendPhotoCta)throw Error('Módulo de foto CTA não carregado.');result=await root.sendPhotoCta(data,opts,active);}
+      else if(data.mode==='quick_reply')result=await W.chat.sendTextMessage(data.target,data.text,{...opts,...data.interactive,useInteractiveMessage:true});
       else result=await W.chat.sendTextMessage(data.target,data.text,opts);
-      return {id:wid(result.id)||String(result.id||''),ack:result.ack};
+      return {id:wid(result.id)||String(result.id||''),ack:result.ack,deliveryFormat:result.deliveryFormat,detail:result.detail};
     } finally {root.busy=false;}
   }
   throw Error('Operação desconhecida.');

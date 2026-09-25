@@ -1,4 +1,4 @@
-# Campanhas WA • Local — v1.2.0
+# Campanhas WA • Local — v1.3.0
 
 [Documentação em português](README.md)
 
@@ -10,7 +10,7 @@ A local Chrome Manifest V3 extension for campaigns with authorized contacts and 
 
 ### New in 1.2 — editor and CSV preview
 
-Choose **Botão CTA**, **Quick reply** or **Lista** in the visible format buttons in **Nova campanha** (or Edit). CTA provides button text and URL/call action; quick replies provide button text and reply ID; lists provide opening-button text, sections, option IDs, titles and descriptions. Add/remove items, set title/footer and review the illustrative preview. Switching formats preserves drafts while the editor stays open.
+Choose **Botão CTA**, **Quick reply** or **Lista** in the visible format buttons in **Nova campanha** (or Edit). CTA provides a JPEG photo, button text and HTTPS URL; quick replies provide button text and reply ID; lists provide opening-button text, sections, option IDs, titles and descriptions. Add/remove items, set title/footer and review the illustrative preview. Switching formats preserves drafts while the editor stays open.
 
 Fill **Contato para teste** with an authorized phone including country code, then click **Criar teste de 1 contato**. This saves a separate stopped campaign; open it and click Start to send.
 
@@ -18,11 +18,23 @@ Importing a CSV shows a table with source record, name/ID, normalized destinatio
 
 DOM tests cover the interactive fields, draft restoration, import filters, pagination and escaping. They do not replace a real WhatsApp delivery test.
 
+### Version 1.3 — photo + URL CTA (device validation pending)
+
+CTA now requires a JPEG upload (up to 3 MB), message text (empty becomes a space), optional footer and up to three HTTPS URL buttons. Only `cta_url` is supported; phone-call buttons are removed. Invalid URLs are discarded, valid URLs are sent unchanged. Existing CTA campaigns must be edited to add a photo before running. The title is deliberately empty in the protocol.
+
+Implementation: `sendFileMessage` uses WhatsApp's normal media preparation/upload. A hook on `createMsgProtobuf`, scoped to a generated message ID, uses its complete uploaded `imageMessage` to construct a top-level `interactiveMessage`, with no view-once envelope or `messageContextInfo`, and `nativeFlowMessage.messageVersion = 1`. A hook on `createFanoutMsgStanza` adds `<biz><interactive type="native_flow" v="1"><native_flow v="9" name="mixed"/></interactive></biz>` to that message only. No `bot` node is added. Source: `src/cta-photo.js`. These are internal APIs: presence and writable exports are checked at runtime; compatibility with the actual WhatsApp session remains unverified.
+
+Unavailable hooks, discarded buttons, an explicit 405 rejection or negative ACK trigger a normal JPEG with the valid links in the caption. The recipient history identifies this fallback. A timeout, an unrecognized pipeline or other ambiguous failure pauses for manual review; automatically resending could duplicate a delivered message. Offline sessions and failed media uploads cannot guarantee delivery. This is an explicit limitation relative to an unconditional fallback requirement.
+
+**36 automated tests pass; Android/iPhone/Web validation is NOT completed.** Tests simulate protocol and stanza creation, the legacy/named argument shapes, untouched normal photos, URL preservation, fallback, timeout behavior and pause. There are no device screenshots and no live sends performed here. User feedback for the prior version: list worked; quick reply worked on Web but not Android/iOS. Their dispatch code is unchanged.
+
+To validate: reload the extension AND WhatsApp Web, create a group campaign with one authorized test-group invite link, select CTA, upload a JPEG, fill text and HTTPS button, set run limit 1 and start. Check the received message and open the button on Android, iPhone and Web. Capture all three screens and confirm the campaign history says CTA, not fallback. If any client fails to render after an ACK, the extension cannot detect that from the server acknowledgment.
+
 ## Features
 
 - Import contact CSVs or group invite links, with validation and deduplication.
 - Text messages and native group invitation cards.
-- **Experimental CTA buttons:** 1–3 URL or phone-call buttons.
+- **Experimental CTA buttons:** photo + 1–3 HTTPS URL buttons.
 - **Experimental quick replies:** 1–3 reply buttons with unique IDs.
 - **Experimental lists:** up to 10 options grouped into sections.
 - Campaign creation, editing, start/resume, pause, cancellation with confirmation, and deletion with confirmation.
@@ -169,7 +181,7 @@ The updater needs GitHub access and may use unpkg for license files. If the corr
 
 ## Validation and initial test
 
-**31 automated tests pass**, covering CSV parsing/deduplication, validation, lifecycle recovery, intervals, limits, exclusions, pause during send, uncertainty, group approval/restrictions, native invitations, interactive dispatch, LID handling, account changes, export structure and dashboard escaping.
+**36 automated tests pass**, covering CSV parsing/deduplication, validation, lifecycle recovery, intervals, limits, exclusions, pause during send, uncertainty, group approval/restrictions, native invitations, interactive dispatch, LID handling, account changes, export structure and dashboard escaping.
 
 The original sample CSVs parsed as 988 contacts and two lists of 40 group links, with no internal duplicates. This validates formatting, not current phone/group availability. Those personal CSVs are not distributed in this package.
 
